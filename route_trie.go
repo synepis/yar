@@ -4,6 +4,11 @@ package yar
 
 import "strings"
 
+type Tree interface {
+	AddRoute(route *Route)
+	FindRoute(path string) (*Route, Params)
+}
+
 type Node struct {
 	char      byte
 	route     *Route // Only leaf nodes have a route != nil

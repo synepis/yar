@@ -201,7 +201,27 @@ func TestParametersGetSet(t *testing.T) {
 	// assert.Equal(t, "456", params["post_id"])
 }
 
+func BenchmarkStaticPath(b *testing.B) {
+	router := New()
+
+	router.Get("/static/path", func(w http.ResponseWriter, r *http.Request) {
+	})
+
+	r, _ := http.NewRequest("GET", "/static/path", nil)
+	benchRequest(b, router, r)
+}
+
 func BenchmarkSingleParam(b *testing.B) {
+	router := New()
+
+	router.Get("/user/:name", func(w http.ResponseWriter, r *http.Request) {
+	})
+
+	r, _ := http.NewRequest("GET", "/user/gordon", nil)
+	benchRequest(b, router, r)
+}
+
+func BenchmarkSingleParamWrite(b *testing.B) {
 	router := New()
 
 	router.Get("/user/:name", func(w http.ResponseWriter, r *http.Request) {
@@ -214,6 +234,16 @@ func BenchmarkSingleParam(b *testing.B) {
 }
 
 func BenchmarkFiveParams(b *testing.B) {
+	router := New()
+
+	router.Get("/part1/:param1/part2/:param2/part3/:param3/part4/:param4/part5/:param5/",
+		func(w http.ResponseWriter, r *http.Request) {})
+
+	r, _ := http.NewRequest("GET", "/part1/part1/part2/part2/part3/part3/part4/part4/part5/part5", nil)
+	benchRequest(b, router, r)
+}
+
+func BenchmarkFiveParamsWrite(b *testing.B) {
 	router := New()
 
 	router.Get("/part1/:param1/part2/:param2/part3/:param3/part4/:param4/part5/:param5/",

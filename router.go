@@ -23,7 +23,7 @@ func NewRoute(urlPattern string) *Route {
 }
 
 type Router struct {
-	routeTrie               RouteTrie
+	routeTrie               Tree
 	notFoundHandler         http.Handler
 	methodNotAllowedHandler http.Handler
 	//TODO: optionsHandle          Handle
@@ -31,7 +31,8 @@ type Router struct {
 
 func New() *Router {
 	return &Router{
-		routeTrie: RouteTrie{}, // TODO: Make NewRouteTrie()
+		routeTrie: Tree(NewRouteTrie()),
+		//routeTrie: Tree(NewSegmentTree()),
 	}
 }
 
