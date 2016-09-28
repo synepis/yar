@@ -66,7 +66,6 @@ func IsParam(char byte) bool {
 }
 
 func getParamKeys(urlPattern string) []string {
-
 	parts := strings.Split(urlPattern, "/")
 	keys := []string{}
 	for i, part := range parts {

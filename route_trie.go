@@ -2,7 +2,10 @@ package yar
 
 // TODO: Rename ensure method to be with must prefix
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 type Tree interface {
 	AddRoute(route *Route)
@@ -15,16 +18,33 @@ type Node struct {
 	paramKey  string
 	maxParams int // Maximum number of params that would need to be allocated for any path under this node
 	parent    *Node
-	children  [256]*Node
-	childCnt  int
+	// children  []*Node
+	children [256]*Node
+	childCnt int
 }
 
 func (n *Node) AddChild(b byte, c *Node) {
+	// if n.children == nil {
+	// 	n.children = make([]*Node, 1)
+	// }
+	// n.children = append(n.children, c)
+	// n.childCnt = len(n.children)
+
 	n.children[b] = c
 	n.childCnt++
 }
 
 func (n *Node) GetChild(b byte) *Node {
+	// if n.children == nil {
+	// 	return nil
+	// }
+	// for i := 0; i < len(n.children); i++ {
+	// 	if n.children[i] != nil && n.children[i].char == b {
+	// 		return n.children[i]
+	// 	}
+	// }
+	// return nil
+
 	return n.children[b]
 }
 
@@ -66,17 +86,21 @@ func (rt *RouteTrie) AddRoute(route *Route) {
 			mustBeUniquePath(next)
 			next.route = route
 			next.maxParams = paramCnt
-			adjustMaxParams(next)
 		}
 		node = next
 	}
+	adjustMaxParams(&rt.root)
 }
 
-// Start from leaf node and bubble up the maxParam value up to root node
 func adjustMaxParams(n *Node) {
-	for n.parent != nil && n.parent.maxParams < n.maxParams {
-		n.parent.maxParams = n.maxParams
-		n = n.parent
+	for _, c := range n.children {
+		if c != nil {
+			adjustMaxParams(c)
+
+			if c.maxParams > n.maxParams {
+				n.maxParams = c.maxParams
+			}
+		}
 	}
 }
 
@@ -105,6 +129,18 @@ func mustBeUniquePath(n *Node) {
 
 func isParameter(char byte) bool {
 	return char == ':' || char == '*'
+}
+
+func debugPrintTree(n *Node, depth int) {
+	for i := 0; i < depth; i++ {
+		fmt.Printf(" ")
+	}
+	fmt.Printf("%s - %d\n", []byte{n.char}, n.maxParams)
+	for _, c := range n.children {
+		if c != nil {
+			debugPrintTree(c, depth+1)
+		}
+	}
 }
 
 // func (rt *RouteTrie) FindRoute(path string) (*Route, map[string]string) {

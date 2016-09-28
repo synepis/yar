@@ -1,7 +1,6 @@
 package yar
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -23,6 +22,8 @@ func TestSegFindingRoutes(t *testing.T) {
 	rt.AddRoute(NewRoute("/images/:user_id/static/*filepath"))
 	// rt.AddRoute(NewRoute("/not_static/*filepath/:dummy_var")) // Should fail adding this route!
 	rt.AddRoute(NewRoute("/unicode日本語/:⌘"))
+	rt.AddRoute(NewRoute("/applications/:client_id/tokens/"))
+	rt.AddRoute(NewRoute("/applications/:client_id/tokens/:access_token"))
 
 	//PrintSegTree(&rt.root, 0)
 
@@ -37,6 +38,9 @@ func TestSegFindingRoutes(t *testing.T) {
 		RouteTestCase{"/static/a/b/c/test.gif", map[string]string{"filepath": "a/b/c/test.gif"}},
 		RouteTestCase{"/images/6/static/a/b/c/test.gif", map[string]string{"user_id": "6", "filepath": "a/b/c/test.gif"}},
 		RouteTestCase{"/unicode日本語/unicodePatram日本語", make(map[string]string)},
+		RouteTestCase{"/blog/:blog_id", map[string]string{"blog_id": ":blog_id"}},
+		RouteTestCase{"/applications/:client_id/tokens/", map[string]string{"client_id": ":client_id"}},
+		RouteTestCase{"/applications/:client_id/tokens/:access_token", map[string]string{"client_id": ":client_id", "access_token": ":access_token"}},
 	}
 
 	for _, tc := range testCases {
@@ -45,16 +49,6 @@ func TestSegFindingRoutes(t *testing.T) {
 		for p := range tc.Params {
 			assert.Equal(t, tc.Params[p], params.Value(p))
 		}
-	}
-}
-
-func PrintSegTree(n *SNode, d int) {
-	for i := 0; i < d; i++ {
-		fmt.Printf("-")
-	}
-	fmt.Printf("-%s\n", n.pattern)
-	for _, c := range n.children {
-		PrintSegTree(c, d+1)
 	}
 }
 

@@ -1,6 +1,9 @@
 package yar
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 type SNode struct {
 	pattern   string
@@ -79,6 +82,16 @@ func getNodeNames(part string) (string, string) {
 		varName = part[1:]
 	}
 	return pattern, varName
+}
+
+func PrintSegTree(n *SNode, d int) {
+	for i := 0; i < d; i++ {
+		fmt.Printf("-")
+	}
+	fmt.Printf("-%s\n", n.pattern)
+	for _, c := range n.children {
+		PrintSegTree(c, d+1)
+	}
 }
 
 func (t *SegmentTrie) FindRoute(path string) (*Route, Params) {
