@@ -3,7 +3,7 @@ Golang HTTP Router - **Y**et **A**nother Http **R**outer
 
 Why another Go HTTP router? Most of the routers out there utilize a custom context object to pass path parameters and thus locking you into their implementation. The other popular option is a global map for parameters which I also believe to be bad when used with a lot of concurrent requests. YAR uses Go's 1.7 http.Request.Context to pass path parameters. This way there's no locking and no opting into custom handler implementation.
 
-##Design:
+## Design:
 - Prefix Trie used to find routes
 - Attaching parameters to http.Request.Context
 - Has native NotFound, MethodNotAllowed and OPTIONS handlers (you can use your own if you prefer)
@@ -17,7 +17,7 @@ Why another Go HTTP router? Most of the routers out there utilize a custom conte
  - Panic recovery - I believe this should be handled by a middleware
  - Logging - Debug logging is included for troubleshooting, but any other logging should again be implemented as middleware
 
-##Usage:
+## Usage:
 Before using YAR, get it by using go get:
 ```
 go get github.com/synepis/yar
@@ -35,24 +35,24 @@ router.ShouldHandleOptions = true // Let YAR automatically respond with allowed 
 http.ListenAndServe(":8080", router)
 ```
 
-###Registering routes:
+### Registering routes:
 You can register any route using either a http.Handler,http.HandlerFunc or simply any function which has the 'func(http.ResponseWriter, *http.Request); signature. Beside those there are a few predefined methods you can use.
 
-###Parameters
-####Regular parameter
+### Parameters
+#### Regular parameter
 A regular will match any text inbetween two '/' symbols (a path segment).
 To add a regular parameter to you path pattern, just prefix it with a ':' symbol:
 ```go
 router.Get("/user/:user_id/details", func(w http.ResponseWriter, r *http.Request) {})
 ```
 
-####Wildcard
+#### Wildcard
 A wildcard parameter must be placed at the end of a path. It will match all text after it.
 To add a wildcard parameter to you path pattern, just prefix it with a '*' symbol:
 ```go
 router.Get("/static/*filepath", func(w http.ResponseWriter, r *http.Request) {})
 ```
-####To read parameters:
+#### To read parameters:
 ```go
 user := yar.GetParam(r, "user") // r is *http.Request
 
@@ -62,7 +62,7 @@ for i := range params {
 }
 ```
 
-###Custom handlers:
+### Custom handlers:
 To se your own NotFound or MethodNotAllowed handlers:
 ```go
 router.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -76,7 +76,7 @@ router.MethodNotAllowedHandler = http.HandlerFunc(func(w http.ResponseWriter, r 
 
 
 
-###Example:
+### Example:
 ```go
 package main
 
@@ -152,7 +152,7 @@ func main() {
 	http.ListenAndServe(":8080", router)
 }
 ```
-####Output of curl commands in above example:
+#### Output of curl commands in above example:
 ```
 2016/10/01 14:03:54 [YAR] [GET] [/] -> [Found: /]
 2016/10/01 14:03:59 [YAR] [GET] [/hello/gordon] -> [Found: /hello/:user]
@@ -164,7 +164,7 @@ func main() {
 2016/10/01 14:04:17 [YAR] [GET] [/blog/123/post/456?q1=111] -> [Found: /blog/:blog_id/post/:post_id]
 ```
 
-##Performance
+## Performance
 The router has decent performance, even though it is implemented with the simpler trie rather than a full-on radix tree. However the biggest impact on performance is the usage of context.Context and http.Request.Context. Without it this router would be a lot closer to the fastest implementation I know of: [HttpRouter](https://github.com/julienschmidt/httprouter) which simply returns a list of parameters through a custom http handler.
 
 Here is a benchmark of the internal RouteTrie function finding the routes (and extracting the parameters) vs. the ServeHTTP which simply calls RoutTrie's FindMethod and saves the returned parameters to the request's context.
@@ -182,8 +182,11 @@ Benchmark_Router_10_Params-8             1000000              2211 ns/op        
 Benchmark_Router_20_Params-8              300000              4406 ns/op             976 B/op          6 allocs/op
 ```
 
-###HttpRouter's benchmarks
+### HttpRouter's benchmarks
 [HttpRouter](https://github.com/julienschmidt/httprouter) has a great set of [benchmarks](https://github.com/julienschmidt/go-http-routing-benchmark) which I've adapted to use YAR and ran locally.
+
+The forked repo of HttpRouter tests is [here](https://github.com/synepis/go-http-routing-benchmark)
+
 Here are the results:
 
 
