@@ -26,7 +26,6 @@ func TestFindingRoutes(t *testing.T) {
 	rt.AddRoute(NewRoute("/blog/:blog_id/post/:post_id"))
 	rt.AddRoute(NewRoute("/static/*filepath"))
 	rt.AddRoute(NewRoute("/images/:user_id/static/*filepath"))
-	// rt.AddRoute(NewRoute("/not_static/*filepath/:dummy_var")) // Should fail adding this route!
 	rt.AddRoute(NewRoute("/unicode日本語/:⌘"))
 
 	var testCases = []RouteTestCase{

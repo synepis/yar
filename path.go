@@ -3,6 +3,7 @@ package yar
 import (
 	"bytes"
 	"fmt"
+	"net/url"
 	"strings"
 )
 
@@ -58,7 +59,8 @@ func (p *Path) Url(params ...string) string {
 	if i != len(pattern) || j != len(params) { // This should never happen
 		panic(fmt.Sprintf("parameter number mismatch for url=%s, %d path params, %d provided params", p.UrlPattern, len(p.ParamKeys), len(params)))
 	}
-	return buffer.String()
+	url := &url.URL{Path: buffer.String()}
+	return url.String()
 }
 
 func IsParam(char byte) bool {

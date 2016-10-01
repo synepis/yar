@@ -29,6 +29,8 @@ func TestCases(t *testing.T) {
 		testCase{"/:a/:b/:c", []string{"a", "b", "c"}, "/a/b/c"},
 		testCase{"/:a/:b/:c//", []string{"a", "b", "c"}, "/a/b/c//"},
 		testCase{"////:a///:b/:c//", []string{"a", "b", "c"}, "////a///b/c//"},
+		testCase{"/user/:user_id/", []string{"-._~$&+,;=:@ !'()*"}, "/user/-._~$&+,;=:@%20%21%27%28%29%2A/"},
+		testCase{"/user/:user_id/", []string{"unicode: 日本語"}, "/user/unicode:%20%E6%97%A5%E6%9C%AC%E8%AA%9E/"},
 	}
 
 	for _, tc := range tcs {

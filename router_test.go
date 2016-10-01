@@ -11,18 +11,23 @@ import (
 )
 
 func TestNotFound(t *testing.T) {
+	// Arrange
 	router := NewRouter()
-
+	router.ShouldLog = false
 	r, _ := http.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
+
+	//Act
 	router.ServeHTTP(w, r)
 
+	//Assert
 	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
 func TestMethodNotAllowed(t *testing.T) {
 	// Arrange
 	router := NewRouter()
+	router.ShouldLog = false
 	router.Get("/", func(w http.ResponseWriter, r *http.Request) {})
 	r, _ := http.NewRequest("POST", "/", nil)
 	w := httptest.NewRecorder()
@@ -37,7 +42,8 @@ func TestMethodNotAllowed(t *testing.T) {
 func TestCustomNotFoundAddHandler(t *testing.T) {
 	// Arrange
 	router := NewRouter()
-	router.notFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	router.ShouldLog = false
+	router.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("Custom Not Found"))
 	})
@@ -56,7 +62,8 @@ func TestCustomNotFoundAddHandler(t *testing.T) {
 func TestCustomMethodNotAllowedAddHandler(t *testing.T) {
 	// Arrange
 	router := NewRouter()
-	router.methodNotAllowedHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	router.ShouldLog = false
+	router.MethodNotAllowedHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		w.Write([]byte("Custom Method Not Allowed"))
 	})
@@ -76,7 +83,8 @@ func TestCustomMethodNotAllowedAddHandler(t *testing.T) {
 func TestOptions(t *testing.T) {
 	// Arrange
 	router := NewRouter()
-	router.shouldHandleOptions = true
+	router.ShouldLog = false
+	router.ShouldHandleOptions = true
 	router.Get("/resource", func(w http.ResponseWriter, r *http.Request) {})
 	router.Put("/resource", func(w http.ResponseWriter, r *http.Request) {})
 	router.Patch("/resource", func(w http.ResponseWriter, r *http.Request) {})
@@ -96,7 +104,8 @@ func TestOptions(t *testing.T) {
 func TestOptionsWhenHandlingIsSetToFalse(t *testing.T) {
 	// Arrange
 	router := NewRouter()
-	router.shouldHandleOptions = false
+	router.ShouldLog = false
+	router.ShouldHandleOptions = false
 	router.Get("/resource", func(w http.ResponseWriter, r *http.Request) {})
 	router.Put("/resource", func(w http.ResponseWriter, r *http.Request) {})
 	router.Patch("/resource", func(w http.ResponseWriter, r *http.Request) {})
@@ -114,6 +123,7 @@ func TestOptionsWhenHandlingIsSetToFalse(t *testing.T) {
 func TestSimplePath(t *testing.T) {
 	// Arrange
 	router := NewRouter()
+	router.ShouldLog = false
 	router.Get("/simplepath", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Served simple path"))
 	})
@@ -131,6 +141,7 @@ func TestSimplePath(t *testing.T) {
 func TestSimplePathWithDifferentMethods(t *testing.T) {
 	// Arrange
 	router := NewRouter()
+	router.ShouldLog = false
 	router.Get("/simplepath", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("GET simple path"))
 	})
@@ -156,6 +167,7 @@ func TestSimplePathWithDifferentMethods(t *testing.T) {
 func TestPathWithParams(t *testing.T) {
 	// Arrange
 	router := NewRouter()
+	router.ShouldLog = false
 	router.Get("/user/:id", func(w http.ResponseWriter, r *http.Request) {
 		id := GetParam(r, "id")
 		resp := fmt.Sprintf("Called with %s", id)
@@ -188,6 +200,7 @@ func TestReadingParamsFromPathWihtoutAny(t *testing.T) {
 	var emptyParam string = "notEmpty"
 
 	router := NewRouter()
+	router.ShouldLog = false
 	router.Get("/simplepath", func(w http.ResponseWriter, r *http.Request) {
 		emptyParams = GetParams(r)
 		emptyParam = GetParam(r, "key")
@@ -207,6 +220,7 @@ func TestReadingParamsFromPathWihtoutAny(t *testing.T) {
 func TestParameterPathWithDifferentMethods(t *testing.T) {
 	// Arrange
 	router := NewRouter()
+	router.ShouldLog = false
 	router.Get("/user/:id", func(w http.ResponseWriter, r *http.Request) {
 		id := GetParam(r, "id")
 		resp := fmt.Sprintf("GET called with %s", id)
@@ -238,6 +252,7 @@ func TestParametersGetSet(t *testing.T) {
 	blogId, postId := "", ""
 
 	router := NewRouter()
+	router.ShouldLog = false
 	router.Get("/blog/:blog_id/post/:post_id", func(w http.ResponseWriter, r *http.Request) {
 		blogId = GetParam(r, "blog_id")
 		postId = GetParam(r, "post_id")
@@ -255,6 +270,7 @@ func TestParametersGetSet(t *testing.T) {
 
 func Benchmark_Router_StaticPath(b *testing.B) {
 	router := NewRouter()
+	router.ShouldLog = false
 
 	router.Get("/static/path", func(w http.ResponseWriter, r *http.Request) {})
 
@@ -280,6 +296,7 @@ func Benchmark_Router_20_Params(b *testing.B) {
 
 func benchmarkRouterWithNParams(b *testing.B, numParams int) {
 	router := NewRouter()
+	router.ShouldLog = false
 
 	urlPattern := ""
 	for i := 0; i < numParams; i++ {

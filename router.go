@@ -3,6 +3,7 @@ package yar
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"sort"
 	"strings"
@@ -26,15 +27,17 @@ func NewRoute(urlPattern string) *Route {
 }
 
 type Router struct {
+	NotFoundHandler         http.Handler // If not set the default handler is used
+	MethodNotAllowedHandler http.Handler // If not set the default handler is used
+	ShouldHandleOptions     bool         // Print allowed methods for a resource/route
+	ShouldLog               bool         // Used to help with debugging
 	routeTrie               routeTrie
-	notFoundHandler         http.Handler
-	methodNotAllowedHandler http.Handler
-	shouldHandleOptions     bool
 }
 
 func NewRouter() *Router {
 	return &Router{
 		routeTrie: *newRouteTrie(),
+		ShouldLog: true,
 	}
 }
 
@@ -49,18 +52,26 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if route != nil { // Found route
 		handler := route.Handlers[req.Method]
 		if handler != nil { // Found method handler
+			if r.ShouldLog {
+				log.Printf("[YAR] [%s] [%s] -> [Found: %s]", req.Method, req.URL, route.Path.UrlPattern)
+			}
 			handler.ServeHTTP(w, reqWithParams)
-		} else if req.Method == "OPTIONS" && r.shouldHandleOptions {
+		} else if req.Method == "OPTIONS" && r.ShouldHandleOptions {
 			r.handleOptions(w, reqWithParams, route)
 		} else {
 			r.handleMethodNotAllowed(w, reqWithParams)
 		}
 	} else {
 		r.handleNotFound(w, reqWithParams)
+
 	}
 }
 
 func (r *Router) handleOptions(w http.ResponseWriter, req *http.Request, route *Route) {
+	if r.ShouldLog {
+		log.Printf("[YAR] [%s] [%s] -> [Handling OPTIONS]", req.Method, req.URL)
+	}
+
 	methods := make([]string, 0)
 	for method := range route.Handlers {
 		methods = append(methods, method)
@@ -70,16 +81,24 @@ func (r *Router) handleOptions(w http.ResponseWriter, req *http.Request, route *
 }
 
 func (r *Router) handleMethodNotAllowed(w http.ResponseWriter, req *http.Request) {
-	if r.methodNotAllowedHandler != nil {
-		r.methodNotAllowedHandler.ServeHTTP(w, req)
+	if r.ShouldLog {
+		log.Printf("[YAR] [%s] [%s] -> [Method Not Allowed]", req.Method, req.URL)
+	}
+
+	if r.MethodNotAllowedHandler != nil {
+		r.MethodNotAllowedHandler.ServeHTTP(w, req)
 	} else {
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 	}
 }
 
 func (r *Router) handleNotFound(w http.ResponseWriter, req *http.Request) {
-	if r.notFoundHandler != nil {
-		r.notFoundHandler.ServeHTTP(w, req)
+	if r.ShouldLog {
+		log.Printf("[YAR] [%s] [%s] -> [Not Found]", req.Method, req.URL)
+	}
+
+	if r.NotFoundHandler != nil {
+		r.NotFoundHandler.ServeHTTP(w, req)
 	} else {
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 	}
