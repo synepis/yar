@@ -26,7 +26,7 @@ go get github.com/synepis/yar
 To start using it:
 ```go
 router := yar.NewRouter()
-router.ShouldLog = true // By default is true to help with debugging, 
+router.ShouldLog = true // By default is true to help with debugging,
                    // set to false for production use
 router.ShouldHandleOptions = true // Let YAR automatically respond with allowed methods for a resource
 
@@ -188,3 +188,22 @@ Here are the results:
 
 
 
+#### Benchmark results analysis summary
+
+In order to compare the routers' performance, each of the routers has been run against
+the full set of benchmarks. The number of operations per second has been chosen
+as the key performance indicator. For each of the benchmarks the top `ops/s` result
+has been denoted as 100% result, with the rest compared relatively to it.
+
+![benchmark matrix](benchmark_static/router_x_benchmark.png)
+
+For example: for the `GithubStatic` benchmark `Denco` obtained the best result of
+149253 operations per second. For this benchmark Yar performed at 8904 operations
+per second, giving it a score of 53% (of the best result).
+
+All of the benchmarks were considered equally significant and the average for each
+of the routers got calculated:
+
+![ benchmark summary](benchmark_static/summary.png)
+
+The full calculations can be found in the [Excel spreadsheet](benchmark_static/benchmar_results_analysis.xlsx).
