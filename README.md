@@ -1,4 +1,4 @@
-# YAR () ![Builds status](https://travis-ci.org/synepis/yar.svg?branch=master "Optional Title") [![Coverage Status](https://coveralls.io/repos/github/synepis/yar/badge.svg?branch=master)](https://coveralls.io/github/synepis/yar?branch=master)
+# YAR ![Builds status](https://travis-ci.org/synepis/yar.svg?branch=master "Optional Title") [![Coverage Status](https://coveralls.io/repos/github/synepis/yar/badge.svg?branch=master)](https://coveralls.io/github/synepis/yar?branch=master)
 Golang HTTP Router - **Y**et **A**nother Http **R**outer
 
 Why another Go HTTP router? Most of the routers out there utilize a custom context object to pass path parameters and thus locking you into their implementation. The other popular option is a global map for parameters which I also believe to be bad when used with a lot of concurrent requests. YAR uses Go's 1.7 http.Request.Context to pass path parameters. This way there's no locking and no opting into custom handler implementation.
