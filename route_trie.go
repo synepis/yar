@@ -1,42 +1,43 @@
 package yar
 
-// TODO: Rename ensure method to be with must prefix
-
 import "strings"
 
-type Node struct {
+type node struct {
 	char      byte
 	route     *Route // Only leaf nodes have a route != nil
 	paramKey  string
-	maxParams int // Maximum number of params that would need to be allocated for any path under this node
-	parent    *Node
-	children  [256]*Node
-	childCnt  int
+	maxParams int // Maximum number of params that would need to be allocated for any path in this node's subtree
+	parent    *node
+	children  []*node
 }
 
-func (n *Node) AddChild(b byte, c *Node) {
-	n.children[b] = c
-	n.childCnt++
+func (n *node) AddChild(c *node) {
+	n.children = append(n.children, c)
 }
 
-func (n *Node) GetChild(b byte) *Node {
-	return n.children[b]
+func (n *node) GetChild(b byte) *node {
+	for _, c := range n.children {
+		if c.char == b {
+			return c
+		}
+	}
+	return nil
 }
 
-type RouteTrie struct {
-	root Node
+type routeTrie struct {
+	root node
 }
 
-func NewRouteTrie() *RouteTrie {
-	return &RouteTrie{}
+func newRouteTrie() *routeTrie {
+	return &routeTrie{}
 }
 
-func (rt *RouteTrie) AddRoute(route *Route) {
-	node := &rt.root
+func (rt *routeTrie) AddRoute(route *Route) {
+	current := &rt.root
 	pattern := route.Path.UrlPattern
 	paramCnt := 0
 	for i := 0; i < len(pattern); i++ {
-		next := node.GetChild(pattern[i])
+		next := current.GetChild(pattern[i])
 		// Extract parameter if it exists, will be empty otherwise
 		char := pattern[i]
 		paramKey := ""
@@ -48,13 +49,13 @@ func (rt *RouteTrie) AddRoute(route *Route) {
 		}
 		// If no next node exists create one
 		if next == nil {
-			mustNotCollide(node, char, paramKey)
-			next = &Node{
+			mustNotCollide(current, char, paramKey)
+			next = &node{
 				char:     char,
-				parent:   node,
+				parent:   current,
 				paramKey: paramKey,
 			}
-			node.AddChild(char, next)
+			current.AddChild(next)
 		}
 		// Add route if this is a leaf node
 		if i == len(pattern)-1 {
@@ -63,12 +64,12 @@ func (rt *RouteTrie) AddRoute(route *Route) {
 			next.maxParams = paramCnt
 			adjustMaxParams(next)
 		}
-		node = next
+		current = next
 	}
 }
 
 // Start from leaf node and bubble up the maxParam value up to root node
-func adjustMaxParams(n *Node) {
+func adjustMaxParams(n *node) {
 	for n.parent != nil && n.parent.maxParams < n.maxParams {
 		n.parent.maxParams = n.maxParams
 		n = n.parent
@@ -76,14 +77,14 @@ func adjustMaxParams(n *Node) {
 }
 
 // Ensuring there is no path collision
-func mustNotCollide(node *Node, char byte, paramKey string) {
+func mustNotCollide(node *node, char byte, paramKey string) {
 	if isParameter(char) {
 		if (node.GetChild(':') != nil && char == '*') ||
 			(node.GetChild('*') != nil && char == ':') {
 			panic("parameter and wilcard types cannot be in the same path part, e.g.:[/user/:user_id,/user/*user_id]")
 		} else if node.GetChild(char) != nil && node.GetChild(char).paramKey != paramKey {
 			panic("cannot have two different parameter names for the same path part, e.g.: [/user/:user_id,/user/:user]")
-		} else if node.childCnt > 0 {
+		} else if len(node.children) > 0 {
 			panic("parameter and static parts of the path cannot be in the same place, e.g.: [/blog/:blog_id,/blog/new]")
 		}
 	} else if node.GetChild(':') != nil || node.GetChild('*') != nil {
@@ -92,7 +93,7 @@ func mustNotCollide(node *Node, char byte, paramKey string) {
 	}
 }
 
-func mustBeUniquePath(n *Node) {
+func mustBeUniquePath(n *node) {
 	if n.route != nil {
 		panic("cannot insert the same path twice")
 	}
@@ -102,21 +103,21 @@ func isParameter(char byte) bool {
 	return char == ':' || char == '*'
 }
 
-// func (rt *RouteTrie) FindRoute(path string) (*Route, map[string]string) {
-func (rt *RouteTrie) FindRoute(path string) (*Route, Params) {
+// func (rt *routeTrie) FindRoute(path string) (*Route, map[string]string) {
+func (rt *routeTrie) FindRoute(path string) (*Route, Params) {
 	var params Params
 	paramCnt := 0
-	node := &rt.root
+	current := &rt.root
 	for i := 0; i < len(path); i++ {
-		var next *Node
+		var next *node
 		// Static part
 		if !isParameter(path[i]) {
-			next = node.GetChild(path[i])
+			next = current.GetChild(path[i])
 		}
 		// If there is no static part, check for parameters
 		if next == nil {
-			if node.GetChild(':') != nil {
-				next = node.GetChild(':')
+			if current.GetChild(':') != nil {
+				next = current.GetChild(':')
 				paramVal := prefixUntilSlash(path[i:])
 				if params == nil { // Lazy init
 					params = make(Params, next.maxParams)
@@ -124,25 +125,25 @@ func (rt *RouteTrie) FindRoute(path string) (*Route, Params) {
 				params[paramCnt] = Param{Key: next.paramKey, Value: paramVal}
 				paramCnt++
 				i += len(paramVal) - 1 // Advance to next path part
-			} else if node.GetChild('*') != nil {
-				next = node.GetChild('*')
+			} else if current.GetChild('*') != nil {
+				next = current.GetChild('*')
 				paramVal := path[i:]
 				if params == nil { // Lazy init
 					params = make(Params, next.maxParams)
 				}
 				params[paramCnt] = Param{Key: next.paramKey, Value: paramVal}
 				paramCnt++
-				return node.GetChild('*').route, params[:paramCnt] // If wildcard we return immediately
+				return current.GetChild('*').route, params[:paramCnt] // If wildcard we return immediately
 			}
 		}
 		// Unrecognized path
 		if next == nil {
 			return nil, nil
 		}
-		node = next
+		current = next
 	}
-	if node != nil && node.route != nil { // Found a leaf node
-		return node.route, params[:paramCnt]
+	if current != nil && current.route != nil { // Found a leaf node
+		return current.route, params[:paramCnt]
 	}
 	return nil, nil // Unrecognized path
 }

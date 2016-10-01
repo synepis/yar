@@ -4,11 +4,14 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sort"
+	"strings"
 )
 
-type RequestContextKey int
+// Used to store parameters in http.Request.Context
+type requestContextKey int
 
-const ROUTE_PARAMS_KEY RequestContextKey = 0
+const ROUTE_PARAMS_KEY requestContextKey = 0
 
 type Route struct {
 	Path     *Path
@@ -23,31 +26,47 @@ func NewRoute(urlPattern string) *Route {
 }
 
 type Router struct {
-	routeTrie               RouteTrie
+	routeTrie               routeTrie
 	notFoundHandler         http.Handler
 	methodNotAllowedHandler http.Handler
-	//TODO: optionsHandle          Handle
+	shouldHandleOptions     bool
 }
 
-func New() *Router {
+func NewRouter() *Router {
 	return &Router{
-		routeTrie: RouteTrie{}, // TODO: Make NewRouteTrie()
+		routeTrie: *newRouteTrie(),
 	}
 }
 
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	route, params := r.routeTrie.FindRoute(req.URL.Path)
-	reqWithParams := req.WithContext(context.WithValue(req.Context(), ROUTE_PARAMS_KEY, params))
+
+	reqWithParams := req
+	if len(params) != 0 { // Store params to context, if any
+		reqWithParams = req.WithContext(context.WithValue(req.Context(), ROUTE_PARAMS_KEY, params))
+	}
+
 	if route != nil { // Found route
 		handler := route.Handlers[req.Method]
 		if handler != nil { // Found method handler
 			handler.ServeHTTP(w, reqWithParams)
+		} else if req.Method == "OPTIONS" && r.shouldHandleOptions {
+			r.handleOptions(w, reqWithParams, route)
 		} else {
 			r.handleMethodNotAllowed(w, reqWithParams)
 		}
 	} else {
 		r.handleNotFound(w, reqWithParams)
 	}
+}
+
+func (r *Router) handleOptions(w http.ResponseWriter, req *http.Request, route *Route) {
+	methods := make([]string, 0)
+	for method := range route.Handlers {
+		methods = append(methods, method)
+	}
+	sort.Strings(methods)
+	w.Write([]byte("Allowed: " + strings.Join(methods, ", ") + "\n"))
 }
 
 func (r *Router) handleMethodNotAllowed(w http.ResponseWriter, req *http.Request) {
@@ -88,6 +107,10 @@ func (r *Router) AddHandle(method, path string, handlerFunc func(http.ResponseWr
 	r.AddHandler(method, path, http.HandlerFunc(handlerFunc))
 }
 
+func (r *Router) Head(path string, handlerFunc func(http.ResponseWriter, *http.Request)) {
+	r.AddHandle("HEAD", path, handlerFunc)
+}
+
 func (r *Router) Get(path string, handlerFunc func(http.ResponseWriter, *http.Request)) {
 	r.AddHandle("GET", path, handlerFunc)
 }
@@ -109,14 +132,17 @@ func (r *Router) Delete(path string, handlerFunc func(http.ResponseWriter, *http
 }
 
 func GetParam(r *http.Request, key string) string {
-	params := r.Context().Value(ROUTE_PARAMS_KEY).(Params)
-	return params.Value(key)
-	// if params == nil {
-	// 	return "", errors.New("no parameters were intialized for this reqest")
-	// }
-	// paramValue, ok := params[paramName]
-	// if !ok {
-	// 	return "", errors.New("no such parameter was found")
-	// }
-	// return paramValue, nil
+	params := r.Context().Value(ROUTE_PARAMS_KEY)
+	if params == nil {
+		return ""
+	}
+	return params.(Params).Value(key)
+}
+
+func GetParams(r *http.Request) Params {
+	params := r.Context().Value(ROUTE_PARAMS_KEY)
+	if params == nil {
+		return Params{}
+	}
+	return params.(Params)
 }

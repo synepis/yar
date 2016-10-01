@@ -2,7 +2,6 @@ package yar
 
 import (
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -12,7 +11,7 @@ import (
 )
 
 func TestNotFound(t *testing.T) {
-	router := New()
+	router := NewRouter()
 
 	r, _ := http.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
@@ -23,7 +22,7 @@ func TestNotFound(t *testing.T) {
 
 func TestMethodNotAllowed(t *testing.T) {
 	// Arrange
-	router := New()
+	router := NewRouter()
 	router.Get("/", func(w http.ResponseWriter, r *http.Request) {})
 	r, _ := http.NewRequest("POST", "/", nil)
 	w := httptest.NewRecorder()
@@ -35,9 +34,86 @@ func TestMethodNotAllowed(t *testing.T) {
 	assert.Equal(t, http.StatusMethodNotAllowed, w.Code)
 }
 
+func TestCustomNotFoundAddHandler(t *testing.T) {
+	// Arrange
+	router := NewRouter()
+	router.notFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("Custom Not Found"))
+	})
+	r, _ := http.NewRequest("GET", "/notfound", nil)
+	w := httptest.NewRecorder()
+
+	// Act
+	router.ServeHTTP(w, r)
+
+	// Assert
+	output, _ := ioutil.ReadAll(w.Result().Body)
+	assert.Equal(t, http.StatusNotFound, w.Code)
+	assert.Equal(t, "Custom Not Found", string(output))
+}
+
+func TestCustomMethodNotAllowedAddHandler(t *testing.T) {
+	// Arrange
+	router := NewRouter()
+	router.methodNotAllowedHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		w.Write([]byte("Custom Method Not Allowed"))
+	})
+	router.Get("/", func(w http.ResponseWriter, r *http.Request) {})
+	r, _ := http.NewRequest("POST", "/", nil)
+	w := httptest.NewRecorder()
+
+	// Act
+	router.ServeHTTP(w, r)
+
+	// Assert
+	output, _ := ioutil.ReadAll(w.Result().Body)
+	assert.Equal(t, http.StatusMethodNotAllowed, w.Code)
+	assert.Equal(t, "Custom Method Not Allowed", string(output))
+}
+
+func TestOptions(t *testing.T) {
+	// Arrange
+	router := NewRouter()
+	router.shouldHandleOptions = true
+	router.Get("/resource", func(w http.ResponseWriter, r *http.Request) {})
+	router.Put("/resource", func(w http.ResponseWriter, r *http.Request) {})
+	router.Patch("/resource", func(w http.ResponseWriter, r *http.Request) {})
+	router.Delete("/resource", func(w http.ResponseWriter, r *http.Request) {})
+	r, _ := http.NewRequest("OPTIONS", "/resource", nil)
+	w := httptest.NewRecorder()
+
+	// Act
+	router.ServeHTTP(w, r)
+
+	// Assert
+	assert.Equal(t, http.StatusOK, w.Code)
+	output, _ := ioutil.ReadAll(w.Result().Body)
+	assert.Equal(t, "Allowed: DELETE, GET, PATCH, PUT\n", string(output))
+}
+
+func TestOptionsWhenHandlingIsSetToFalse(t *testing.T) {
+	// Arrange
+	router := NewRouter()
+	router.shouldHandleOptions = false
+	router.Get("/resource", func(w http.ResponseWriter, r *http.Request) {})
+	router.Put("/resource", func(w http.ResponseWriter, r *http.Request) {})
+	router.Patch("/resource", func(w http.ResponseWriter, r *http.Request) {})
+	router.Delete("/resource", func(w http.ResponseWriter, r *http.Request) {})
+	r, _ := http.NewRequest("OPTIONS", "/resource", nil)
+	w := httptest.NewRecorder()
+
+	// Act
+	router.ServeHTTP(w, r)
+
+	// Assert
+	assert.Equal(t, http.StatusMethodNotAllowed, w.Code)
+}
+
 func TestSimplePath(t *testing.T) {
 	// Arrange
-	router := New()
+	router := NewRouter()
 	router.Get("/simplepath", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Served simple path"))
 	})
@@ -54,7 +130,7 @@ func TestSimplePath(t *testing.T) {
 
 func TestSimplePathWithDifferentMethods(t *testing.T) {
 	// Arrange
-	router := New()
+	router := NewRouter()
 	router.Get("/simplepath", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("GET simple path"))
 	})
@@ -77,9 +153,9 @@ func TestSimplePathWithDifferentMethods(t *testing.T) {
 	assert.Equal(t, "POST simple path", string(postOutput))
 }
 
-func TestPathWithParamChars(t *testing.T) {
+func TestPathWithParams(t *testing.T) {
 	// Arrange
-	router := New()
+	router := NewRouter()
 	router.Get("/user/:id", func(w http.ResponseWriter, r *http.Request) {
 		id := GetParam(r, "id")
 		resp := fmt.Sprintf("Called with %s", id)
@@ -106,9 +182,31 @@ func TestPathWithParamChars(t *testing.T) {
 	assert.Equal(t, "Called with *wildcard", string(getOutput2))
 }
 
+func TestReadingParamsFromPathWihtoutAny(t *testing.T) {
+	// Arrange
+	var emptyParams Params = Params{Param{"Key", "Val"}}
+	var emptyParam string = "notEmpty"
+
+	router := NewRouter()
+	router.Get("/simplepath", func(w http.ResponseWriter, r *http.Request) {
+		emptyParams = GetParams(r)
+		emptyParam = GetParam(r, "key")
+		w.Write([]byte("Served simple path"))
+	})
+	r, _ := http.NewRequest("GET", "/simplepath", nil)
+	w := httptest.NewRecorder()
+
+	// Act
+	router.ServeHTTP(w, r)
+
+	// Assert
+	assert.Equal(t, Params{}, emptyParams)
+	assert.Equal(t, "", emptyParam)
+}
+
 func TestParameterPathWithDifferentMethods(t *testing.T) {
 	// Arrange
-	router := New()
+	router := NewRouter()
 	router.Get("/user/:id", func(w http.ResponseWriter, r *http.Request) {
 		id := GetParam(r, "id")
 		resp := fmt.Sprintf("GET called with %s", id)
@@ -135,58 +233,14 @@ func TestParameterPathWithDifferentMethods(t *testing.T) {
 	assert.Equal(t, "POST called with 2", string(postOutput))
 }
 
-func TestCustomNotFoundAddHandler(t *testing.T) {
-	// Arrange
-	router := New()
-	router.notFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte("Custom Not Found"))
-	})
-	r, _ := http.NewRequest("GET", "/notfound", nil)
-	w := httptest.NewRecorder()
-
-	// Act
-	router.ServeHTTP(w, r)
-
-	// Assert
-	output, _ := ioutil.ReadAll(w.Result().Body)
-	assert.Equal(t, http.StatusNotFound, w.Code)
-	assert.Equal(t, "Custom Not Found", string(output))
-}
-
-func TestCustomMethodNotAllowedAddHandler(t *testing.T) {
-	// Arrange
-	router := New()
-	router.methodNotAllowedHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		w.Write([]byte("Custom Method Not Allowed"))
-	})
-	router.Get("/", func(w http.ResponseWriter, r *http.Request) {})
-	r, _ := http.NewRequest("POST", "/", nil)
-	w := httptest.NewRecorder()
-
-	// Act
-	router.ServeHTTP(w, r)
-
-	// Assert
-	output, _ := ioutil.ReadAll(w.Result().Body)
-	assert.Equal(t, http.StatusMethodNotAllowed, w.Code)
-	assert.Equal(t, "Custom Method Not Allowed", string(output))
-}
-
 func TestParametersGetSet(t *testing.T) {
 	// Arrange
 	blogId, postId := "", ""
 
-	router := New()
+	router := NewRouter()
 	router.Get("/blog/:blog_id/post/:post_id", func(w http.ResponseWriter, r *http.Request) {
-		// errs := make([]error, 3)
 		blogId = GetParam(r, "blog_id")
 		postId = GetParam(r, "post_id")
-		// params = GetParams(r)
-		// for _, err := range errs {
-		// 	assert.Nil(t, err, "expected to be no errors while reading parameters")
-		// }
 	})
 	r, _ := http.NewRequest("GET", "/blog/123/post/456", nil)
 	w := httptest.NewRecorder()
@@ -197,36 +251,60 @@ func TestParametersGetSet(t *testing.T) {
 	// Assert
 	assert.Equal(t, "123", blogId)
 	assert.Equal(t, "456", postId)
-	// assert.Equal(t, "123", params["blog_id"])
-	// assert.Equal(t, "456", params["post_id"])
 }
 
-func BenchmarkSingleParam(b *testing.B) {
-	router := New()
+func Benchmark_Router_StaticPath(b *testing.B) {
+	router := NewRouter()
 
-	router.Get("/user/:name", func(w http.ResponseWriter, r *http.Request) {
-		param := GetParam(r, "name")
-		io.WriteString(w, param)
-	})
+	router.Get("/static/path", func(w http.ResponseWriter, r *http.Request) {})
 
-	r, _ := http.NewRequest("GET", "/user/gordon", nil)
+	r, _ := http.NewRequest("GET", "/static/path", nil)
 	benchRequest(b, router, r)
 }
 
-func BenchmarkFiveParams(b *testing.B) {
-	router := New()
+func Benchmark_Router_1_Params(b *testing.B) {
+	benchmarkRouterWithNParams(b, 5)
+}
 
-	router.Get("/part1/:param1/part2/:param2/part3/:param3/part4/:param4/part5/:param5/",
+func Benchmark_Router_5_Params(b *testing.B) {
+	benchmarkRouterWithNParams(b, 5)
+}
+
+func Benchmark_Router_10_Params(b *testing.B) {
+	benchmarkRouterWithNParams(b, 10)
+}
+
+func Benchmark_Router_20_Params(b *testing.B) {
+	benchmarkRouterWithNParams(b, 20)
+}
+
+func benchmarkRouterWithNParams(b *testing.B, numParams int) {
+	router := NewRouter()
+
+	urlPattern := ""
+	for i := 0; i < numParams; i++ {
+		urlPattern += fmt.Sprintf("/part%d/:param%d", i, i)
+	}
+
+	reqUrl := ""
+	for i := 0; i < numParams; i++ {
+		reqUrl += fmt.Sprintf("/part%d/part%d", i, i)
+	}
+
+	paramKeys := []string{}
+	for i := 0; i < numParams; i++ {
+		paramKeys = append(paramKeys, fmt.Sprintf("param%d", i))
+	}
+
+	router.Get(urlPattern,
 		func(w http.ResponseWriter, r *http.Request) {
-			param1 := GetParam(r, "param1")
-			param2 := GetParam(r, "param2")
-			param3 := GetParam(r, "param3")
-			param4 := GetParam(r, "param4")
-			param5 := GetParam(r, "param5")
-			io.WriteString(w, param1+param2+param3+param4+param5)
+			params := GetParams(r)
+			for i := range paramKeys { // Read all parameters
+				params.Value(paramKeys[i])
+			}
 		})
 
-	r, _ := http.NewRequest("GET", "/part1/part1/part2/part2/part3/part3/part4/part4/part5/part5", nil)
+	r, _ := http.NewRequest("GET", reqUrl, nil)
 	benchRequest(b, router, r)
 }
 
