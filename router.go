@@ -43,7 +43,6 @@ func NewRouter() *Router {
 
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	route, params := r.routeTrie.FindRoute(req.URL.Path)
-
 	reqWithParams := req
 	if len(params) != 0 { // Store params to context, if any
 		reqWithParams = req.WithContext(context.WithValue(req.Context(), ROUTE_PARAMS_KEY, params))

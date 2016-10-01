@@ -36,6 +36,7 @@ func (rt *routeTrie) AddRoute(route *Route) {
 	current := &rt.root
 	pattern := route.Path.UrlPattern
 	paramCnt := 0
+	maxParams := max(current.maxParams, len(route.Path.ParamKeys))
 	for i := 0; i < len(pattern); i++ {
 		next := current.GetChild(pattern[i])
 		// Extract parameter if it exists, will be empty otherwise
@@ -61,18 +62,10 @@ func (rt *routeTrie) AddRoute(route *Route) {
 		if i == len(pattern)-1 {
 			mustBeUniquePath(next)
 			next.route = route
-			next.maxParams = paramCnt
-			adjustMaxParams(next)
+			next.maxParams = maxParams
 		}
+		current.maxParams = maxParams
 		current = next
-	}
-}
-
-// Start from leaf node and bubble up the maxParam value up to root node
-func adjustMaxParams(n *node) {
-	for n.parent != nil && n.parent.maxParams < n.maxParams {
-		n.parent.maxParams = n.maxParams
-		n = n.parent
 	}
 }
 
@@ -103,7 +96,6 @@ func isParameter(char byte) bool {
 	return char == ':' || char == '*'
 }
 
-// func (rt *routeTrie) FindRoute(path string) (*Route, map[string]string) {
 func (rt *routeTrie) FindRoute(path string) (*Route, Params) {
 	var params Params
 	paramCnt := 0
@@ -154,4 +146,11 @@ func prefixUntilSlash(str string) string {
 		return str[:index]
 	}
 	return str
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }

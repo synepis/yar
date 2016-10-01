@@ -39,6 +39,8 @@ func TestFindingRoutes(t *testing.T) {
 		RouteTestCase{"/static/a/b/c/test.gif", map[string]string{"filepath": "a/b/c/test.gif"}},
 		RouteTestCase{"/images/6/static/a/b/c/test.gif", map[string]string{"user_id": "6", "filepath": "a/b/c/test.gif"}},
 		RouteTestCase{"/unicode日本語/unicodePatram日本語", make(map[string]string)},
+		RouteTestCase{"/user/:user_id", map[string]string{"user_id": ":user_id"}},
+		RouteTestCase{"/static/:user_id", make(map[string]string)},
 	}
 
 	for _, tc := range testCases {
