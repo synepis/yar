@@ -80,6 +80,27 @@ func TestCustomMethodNotAllowedAddHandler(t *testing.T) {
 	assert.Equal(t, "Custom Method Not Allowed", string(output))
 }
 
+func TestAddingTheSameRouteAndMethodPanics(t *testing.T) {
+	router := NewRouter()
+
+	panicked := false
+	testPanic := func() {
+		defer func() {
+			if r := recover(); r != nil {
+				panicked = true
+
+			}
+		}()
+
+		router.Get("/somepath", func(w http.ResponseWriter, r *http.Request) {})
+		router.Get("/somepath", func(w http.ResponseWriter, r *http.Request) {})
+	}
+
+	testPanic()
+
+	assert.True(t, panicked)
+}
+
 func TestOptions(t *testing.T) {
 	// Arrange
 	router := NewRouter()
@@ -192,6 +213,26 @@ func TestPathWithParams(t *testing.T) {
 	getOutput2, _ := ioutil.ReadAll(wGet2.Result().Body)
 	assert.Equal(t, "Called with :parameter", string(getOutput1))
 	assert.Equal(t, "Called with *wildcard", string(getOutput2))
+}
+
+func TestNonExistentParams(t *testing.T) {
+	// Arrange
+	router := NewRouter()
+	router.ShouldLog = false
+	router.Get("/path", func(w http.ResponseWriter, r *http.Request) {
+		param := GetParam(r, "non-existent-param")
+		resp := fmt.Sprintf("param value:[%s]", param)
+		w.Write([]byte(resp))
+	})
+	r, _ := http.NewRequest("GET", "/path", nil)
+	w := httptest.NewRecorder()
+
+	// Act
+	router.ServeHTTP(w, r)
+
+	// Assert
+	output, _ := ioutil.ReadAll(w.Result().Body)
+	assert.Equal(t, "param value:[]", string(output))
 }
 
 func TestReadingParamsFromPathWihtoutAny(t *testing.T) {
