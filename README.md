@@ -5,7 +5,7 @@ Golang HTTP Router - **Y**et **A**nother Http **R**outer
 
 Why another Go HTTP router? One of the problems of writing a HTTP router is how to pass the path parameters to the method handlers. So far I've seen 3 approaches
 - *Custom context:* Most of the routers out there utilize a custom context object to pass path parameters and thus locking you into their implementation. However, this is the fastest option.
-- *Global map*: This is another popular option which I believe to be suboptimal when used with a lot of concurrent requests. Some side effects include the fact that multiple routers share the same global map, hard to control the lifecycle of the map, need to worry about clearing out the request once the request has been served.
+- *Global map*: This is another popular option which I believe to be suboptimal when used with a lot of concurrent requests. Some side effects include the fact that multiple routers share the same global map, hard to control the lifecycle of the map, need to worry about clearing out the request's context from the map once the request has been served.
 - *URL query rewriting* - This option writes the found parameters to the querystring of the request. This is quite slow once you have to parse the URL again to get the parameters. 
 
 YAR approach uses Go's 1.7 http.Request.Context to pass path parameters. This way there's no locking and no opting into custom handler implementation. This is not the fastest approach, but it's not too slow and we don't need to change/write to the request which could be accessed concurrently.
