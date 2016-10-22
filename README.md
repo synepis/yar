@@ -190,6 +190,7 @@ Benchmark_Router_20_Params-8              300000              4406 ns/op        
 [HttpRouter](https://github.com/julienschmidt/httprouter) has a great set of [benchmarks](https://github.com/julienschmidt/go-http-routing-benchmark) which I've adapted to use YAR and ran locally.
 
 The forked repo of HttpRouter tests is [here](https://github.com/synepis/go-http-routing-benchmark)
+*Note: The Gin router seems to be the fastest, it uses HttpRouter underneath but with some additional optimizations.
 
 Here are the results:
 
@@ -218,4 +219,4 @@ The full calculations can be found in the [Excel spreadsheet](benchmark_static/b
 
 ## Credits
 - The project was inspired and uses some of the benchmark code from [HttpRouter](https://github.com/julienschmidt/httprouter) 
-- Thank you to [nietaki](https://github.com/nietaki) for his Excel prowess in creating the nice benchmark comparison overview.
+- Special thanks to [nietaki](https://github.com/nietaki) for using his Excel prowess in creating the nice benchmark comparison overview.
